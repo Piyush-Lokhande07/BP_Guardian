@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import heroIllustration from '../assets/hero-illustration.svg';
 import { motion } from 'framer-motion';
 import { Activity, Zap, Shield, Heart, ChevronRight, Menu, X, TrendingDown, Users, Clock, Star, Linkedin, Twitter, Github } from 'lucide-react';
 
@@ -149,10 +150,11 @@ const LandingPage = () => {
             transition={{ duration: 0.6 }}
           >
             <img
-              src="/placeholder.svg?key=w0eiv"
+              src={heroIllustration}
               alt="AI Blood Pressure Monitoring"
               className="w-full h-full object-cover rounded-2xl"
             />
+
           </motion.div>
         </div>
       </div>
