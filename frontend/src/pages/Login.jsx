@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import Navbar from '../components/Navbar';
+import { useAuth } from '../context/AuthContext';
 import { Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
 
 export default function LoginPage() {
+  const { login } = useAuth()
   const [activeTab, setActiveTab] = useState('patient');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,10 +33,9 @@ export default function LoginPage() {
         throw new Error('Invalid credentials');
       }
 
-      const data = await response.json();
-
-      // Store JWT token in localStorage
-      localStorage.setItem('authToken', data.token);
+  const data = await response.json();
+  // Store via auth context
+  await login({ token: data.token, role: activeTab, profile: { email } })
       setSuccess(true);
 
       // Redirect based on role
@@ -46,7 +47,8 @@ export default function LoginPage() {
     } catch (err) {
       setError(err.message || 'Login failed. Please try again.');
       // Fallback: simulate successful login with timeout for demo purposes
-      console.log('API call simulation - would redirect in production');
+  console.log('API call simulation - would redirect in production');
+  await login({ token: 'demo-token', role: activeTab, profile: { email } })
       setTimeout(() => {
         const redirectUrl =
           activeTab === 'doctor' ? '/doctor/dashboard' : '/patient/dashboard';
@@ -71,7 +73,7 @@ export default function LoginPage() {
               M
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">MediBridge</h1>
+          <h1 className="text-3xl font-bold text-gray-900">BP Guardian</h1>
           <p className="text-gray-600 text-sm mt-2">Healthcare AI Platform</p>
         </div>
 
@@ -177,7 +179,7 @@ export default function LoginPage() {
 
               {/* Security Message */}
               <p className="text-center text-xs text-gray-600">
-                Secure login powered by MediBridge AI
+                Secure login powered by BP Guardian AI
               </p>
             </form>
 
