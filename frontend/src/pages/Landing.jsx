@@ -64,11 +64,12 @@ const LandingPage = () => {
             whileInView={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6 }}
           >
-            <img
-              src="/placeholder.svg?key=w0eiv"
+            {/* <img
+              src={heroIllustration}
               alt="AI Blood Pressure Monitoring"
               className="w-full h-full object-cover rounded-2xl"
-            />
+            /> */}
+
           </motion.div>
         </div>
       </div>
