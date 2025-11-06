@@ -8,7 +8,8 @@ export default function SignupPage() {
   const [success, setSuccess] = useState(false);
 
   const [patient, setPatient] = useState({
-    name: '',
+    fullName: '',
+    email: '',
     age: '',
     gender: '',
     height: '',
@@ -23,11 +24,11 @@ export default function SignupPage() {
   });
 
   const [doctor, setDoctor] = useState({
-    name: '',
+    doctorName: '',
+    email: '',
     education: '',
     experience: '',
     specialization: '',
-    email: '',
     phone: '',
     registrationNo: '',
     password: '',
@@ -50,25 +51,70 @@ export default function SignupPage() {
     setSuccess(false);
     setLoading(true);
 
-    try {
-      const payload = activeTab === 'patient' ? { role: 'patient', ...patient } : { role: 'doctor', ...doctor };
+    const formData = activeTab === 'patient' ? patient : doctor;
+    
+    // Validate password match
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      setLoading(false);
+      return;
+    }
 
-      const res = await fetch('/api/auth/signup', {
+    try {
+      // Remove confirmPassword from payload
+      const { confirmPassword, ...payload } = formData;
+      
+      // Add role to payload
+      payload.role = activeTab;
+
+        // Transform field names for patient
+        if (activeTab === 'patient') {
+          payload.name = payload.fullName;
+          delete payload.fullName;
+        }
+
+        // Convert numeric strings to numbers
+        if (activeTab === 'patient') {
+          payload.age = Number(payload.age);
+          payload.height = Number(payload.height);
+          payload.weight = Number(payload.weight);
+        } else {
+          payload.experience = Number(payload.experience);
+        }
+
+      const res = await fetch('http://localhost:5000/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
-      if (!res.ok) throw new Error('Signup failed');
-
       const data = await res.json();
-      localStorage.setItem('authToken', data.token || '');
+
+      if (!res.ok) {
+        // Handle validation errors
+        if (data.errors) {
+          const errorMessages = data.errors.map(err => err.msg).join(', ');
+          throw new Error(errorMessages);
+        }
+        throw new Error(data.message || 'Registration failed');
+      }
+
+      if (!data.success) {
+        throw new Error(data.message || 'Registration failed');
+      }
+
+      // Store auth token
+      localStorage.setItem('authToken', data.data.token);
+      localStorage.setItem('authRole', data.data.role);
+      
       setSuccess(true);
+
+      // Navigate using react-router
       setTimeout(() => {
         window.location.href = activeTab === 'doctor' ? '/doctor/dashboard' : '/patient/dashboard';
       }, 1000);
     } catch (err) {
-      setError(err.message || 'Signup error. Try again.');
+      setError(err.message || 'Registration error. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -127,7 +173,15 @@ export default function SignupPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
                       <div className="relative">
                         <User className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
-                        <input name="name" value={patient.name} onChange={handlePatientChange} required placeholder="John Doe" className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        <input name="fullName" value={patient.fullName} onChange={handlePatientChange} required placeholder="John Doe" className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                      <div className="relative">
+                        <Mail className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
+                        <input name="email" type="email" value={patient.email} onChange={handlePatientChange} required placeholder="you@example.com" className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                       </div>
                     </div>
 
@@ -219,7 +273,7 @@ export default function SignupPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
                       <div className="relative">
                         <User className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
-                        <input name="name" value={doctor.name} onChange={handleDoctorChange} required placeholder="Dr. Jane Doe" className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        <input name="doctorName" value={doctor.doctorName} onChange={handleDoctorChange} required placeholder="Dr. Jane Doe" className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                       </div>
                     </div>
 

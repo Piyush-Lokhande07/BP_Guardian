@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../context/AuthContext';
 import { Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function LoginPage() {
   const { login } = useAuth()
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('patient');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,42 +20,41 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // Simulate API call to /api/auth/login
-      const response = await fetch('/api/auth/login', {
+      // Call backend login API (backend runs on localhost:5000)
+      const response = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          role: activeTab,
-          email,
-          password,
-        }),
+        // backend expects email and password
+        body: JSON.stringify({ email, password }),
       });
 
-      if (!response.ok) {
-        throw new Error('Invalid credentials');
+      const result = await response.json();
+
+      // Check for server-side validation or auth failure
+      if (!response.ok || !result.success) {
+        const message = (result && result.message) || 'Invalid credentials';
+        throw new Error(message);
       }
 
-  const data = await response.json();
-  // Store via auth context
-  await login({ token: data.token, role: activeTab, profile: { email } })
+      const data = result.data;
+
+      // Store via auth context using server-provided token and role/profile
+      await login({
+        token: data.token,
+        role: data.role || activeTab,
+        profile: { email: data.email, fullName: data.fullName, id: data.id },
+      });
+
       setSuccess(true);
 
-      // Redirect based on role
+      // Redirect based on the role returned from server (fallback to activeTab)
       setTimeout(() => {
         const redirectUrl =
-          activeTab === 'doctor' ? '/doctor/dashboard' : '/patient/dashboard';
-        window.location.href = redirectUrl;
-      }, 1000);
+          (data.role || activeTab) === 'doctor' ? '/doctor/dashboard' : '/patient/dashboard';
+        navigate(redirectUrl, { replace: true });
+      }, 800);
     } catch (err) {
       setError(err.message || 'Login failed. Please try again.');
-      // Fallback: simulate successful login with timeout for demo purposes
-  console.log('API call simulation - would redirect in production');
-  await login({ token: 'demo-token', role: activeTab, profile: { email } })
-      setTimeout(() => {
-        const redirectUrl =
-          activeTab === 'doctor' ? '/doctor/dashboard' : '/patient/dashboard';
-        window.location.href = redirectUrl;
-      }, 2000);
     } finally {
       setLoading(false);
     }

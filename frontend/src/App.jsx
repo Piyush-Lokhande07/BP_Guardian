@@ -17,8 +17,6 @@ import DoctorLayout from './layouts/DoctorLayout.jsx'
 import PatientLayout from './layouts/PatientLayout.jsx'
 import DoctorRegister from './pages/Auth/DoctorRegister.jsx'
 import PatientRegister from './pages/Auth/PatientRegister.jsx'
-import { ProtectedRoute } from './context/AuthContext.jsx'
-
 
 
 function App() {
