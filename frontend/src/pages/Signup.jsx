@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { User, Phone, Lock, Mail, FileText, Clipboard } from 'lucide-react';
+import Navbar from '../components/Navbar';
 
 export default function SignupPage() {
   const [activeTab, setActiveTab] = useState('patient');
@@ -121,7 +123,9 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-teal-50 flex items-center justify-center p-4">
+    <>
+      <Navbar />
+      <div className="min-h-screen pt-20 bg-linear-to-br from-blue-50 via-white to-teal-50 flex items-center justify-center p-4">
       <div className="w-full max-w-2xl">
         <div className="text-center mb-8">
           <div className="inline-block p-3 bg-linear-to-br from-blue-500 to-teal-500 rounded-2xl mb-4">
@@ -337,7 +341,7 @@ export default function SignupPage() {
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
                 Already have an account?{' '}
-                <a href="/login" className="text-blue-600 font-semibold hover:text-blue-700">Sign in</a>
+                <Link to="/signin" className="text-blue-600 font-semibold hover:text-blue-700">Sign in</Link>
               </p>
             </div>
           </div>
@@ -348,5 +352,6 @@ export default function SignupPage() {
         </p>
       </div>
     </div>
+    </>
   );
 }

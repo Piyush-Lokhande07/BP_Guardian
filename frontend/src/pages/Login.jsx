@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../context/AuthContext';
 import { Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate, Link } from 'react-router-dom';
 
 export default function LoginPage() {
-  const { login } = useAuth()
+  const { login, token, role } = useAuth()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('patient');
   const [email, setEmail] = useState('');
@@ -34,6 +34,12 @@ export default function LoginPage() {
       if (!response.ok || !result.success) {
         const message = (result && result.message) || 'Invalid credentials';
         throw new Error(message);
+      }
+
+      // If already authenticated, redirect away from login page
+      if (token) {
+        const redirectUrl = role === 'doctor' ? '/doctor/dashboard' : '/patient/dashboard'
+        return <Navigate to={redirectUrl} replace />
       }
 
       const data = result.data;
@@ -188,9 +194,9 @@ export default function LoginPage() {
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
                 Don't have an account?{' '}
-                <a href="#signup" className="text-blue-600 font-semibold hover:text-blue-700">
+                <Link to="/signup" className="text-blue-600 font-semibold hover:text-blue-700">
                   Sign up
-                </a>
+                </Link>
               </p>
             </div>
           </div>
