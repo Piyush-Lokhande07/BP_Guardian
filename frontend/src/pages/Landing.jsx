@@ -3,6 +3,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import Navbar from '../components/Navbar';
 import { Activity, Zap, Shield, Heart, TrendingDown, Star, Linkedin, Twitter, Github } from 'lucide-react';
+import heroIllustration from '../assets/hero_main_image.svg';
 
 const LandingPage = () => {
   // Navbar now handled via shared component
@@ -64,11 +65,11 @@ const LandingPage = () => {
             whileInView={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6 }}
           >
-            {/* <img
+            <img
               src={heroIllustration}
               alt="AI Blood Pressure Monitoring"
               className="w-full h-full object-cover rounded-2xl"
-            /> */}
+            />
 
           </motion.div>
         </div>
