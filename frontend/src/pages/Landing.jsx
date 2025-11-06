@@ -1,6 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React from 'react';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom'
 import Navbar from '../components/Navbar';
 import { Activity, Zap, Shield, Heart, TrendingDown, Star, Linkedin, Twitter, Github } from 'lucide-react';
 import heroIllustration from '../assets/hero_main_image.svg';
@@ -48,13 +49,19 @@ const LandingPage = () => {
               >
                 Try Demo
               </motion.button>
-              <motion.button
-                className="px-8 py-3 border-2 border-slate-200 text-slate-900 rounded-full font-semibold hover:border-blue-500 hover:text-blue-500 transition-colors"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                Login
-              </motion.button>
+              {(() => {
+                const MotionLink = motion(Link)
+                return (
+                  <MotionLink
+                    to="/login"
+                    className="px-8 py-3 border-2 border-slate-200 text-slate-900 rounded-full font-semibold hover:border-blue-500 hover:text-blue-500 transition-colors flex items-center justify-center"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    Login
+                  </MotionLink>
+                )
+              })()}
             </div>
           </motion.div>
 
