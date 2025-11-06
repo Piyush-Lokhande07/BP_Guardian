@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Heart, Menu, X } from 'lucide-react'
@@ -19,7 +20,7 @@ export default function Navbar() {
 						<div className="w-8 h-8 bg-linear-to-br from-blue-500 to-teal-500 rounded-lg flex items-center justify-center">
 							<Heart className="w-5 h-5 text-white" />
 						</div>
-						<span className="font-bold text-xl text-slate-900">MediBridge</span>
+						<span className="font-bold text-xl text-slate-900">BP Guardian</span>
 					</motion.div>
 
 					{/* Desktop Menu */}
