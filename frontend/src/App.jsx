@@ -1,8 +1,8 @@
 
 import './App.css'
-import { Route, Routes } from 'react-router-dom'
+import { Route, Routes, Navigate } from 'react-router-dom'
 import Landing from './pages/Landing.jsx'
-import Login from './pages/Login.jsx' 
+import Login from './pages/Login.jsx'
 import Signup from './pages/Signup.jsx'
 import Navbar from './components/Navbar.jsx'
 import Profile from './pages/Profile.jsx'
