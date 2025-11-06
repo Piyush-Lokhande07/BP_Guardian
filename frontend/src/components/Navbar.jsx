@@ -1,10 +1,14 @@
 /* eslint-disable no-unused-vars */
 import React, { useState } from 'react'
 import { motion } from 'framer-motion'
+import { Link } from 'react-router-dom'
 import { Heart, Menu, X } from 'lucide-react'
 
 export default function Navbar() {
 	const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+	// motion-enabled Link component so we can keep framer-motion animations
+	const MotionLink = motion(Link)
 
 	return (
 		<motion.nav
@@ -38,13 +42,14 @@ export default function Navbar() {
 					</div>
 
 					{/* Get Started Button (Desktop) */}
-					<motion.button
+					<MotionLink
+						to="/login"
 						className="hidden md:flex px-6 py-2 bg-linear-to-r from-blue-500 to-teal-500 text-white rounded-full font-medium text-sm hover:shadow-lg transition-shadow"
 						whileHover={{ scale: 1.05 }}
 						whileTap={{ scale: 0.95 }}
 					>
 						Get Started
-					</motion.button>
+					</MotionLink>
 
 					{/* Mobile Menu Toggle */}
 					<button className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
@@ -70,9 +75,9 @@ export default function Navbar() {
 								{item}
 							</a>
 						))}
-						<button className="w-full mt-4 px-6 py-2 bg-linear-to-r from-blue-500 to-teal-500 text-white rounded-full font-medium text-sm">
+						<MotionLink to="/login" className="w-full mt-4 px-6 py-2 bg-linear-to-r from-blue-500 to-teal-500 text-white rounded-full font-medium text-sm">
 							Get Started
-						</button>
+						</MotionLink>
 					</motion.div>
 				)}
 			</div>
