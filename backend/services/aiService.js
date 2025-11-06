@@ -1,87 +1,66 @@
-import OpenAI from 'openai';
 import axios from 'axios';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import BPReading from '../models/BPReading.js';
 import MedicalRecord from '../models/MedicalRecord.js';
 import User from '../models/User.js';
+import 'dotenv/config';
 import { generateFallbackResponse, generateContextualFallbackResponse, isOpenAIConfigured } from './chatbotFallback.js';
 
-// Initialize OpenAI client only if API key is provided
-let openai = null;
-let openaiTransport = 'none'; // 'sdk' | 'rest' | 'none'
-let lastOpenAIError = '';
-const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
-const OPENAI_ORG = process.env.OPENAI_ORG || '';
-if (isOpenAIConfigured()) {
-  try {
-    openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-      baseURL: OPENAI_BASE_URL,
-      organization: OPENAI_ORG || undefined
-    });
-    openaiTransport = 'sdk';
-  } catch (error) {
-    lastOpenAIError = `SDK init: ${error?.message || String(error)}`;
-    console.error('Error initializing OpenAI client:', error?.message || error);
-    // Fallback to REST via axios (handles Node environments without fetch)
-    try {
-      await axios.get(`${OPENAI_BASE_URL}/models`, {
-        headers: {
-          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-          ...(OPENAI_ORG ? { 'OpenAI-Organization': OPENAI_ORG } : {})
-        },
-        proxy: false
-      });
-      openai = { _rest: true };
-      openaiTransport = 'rest';
-    } catch (restErr) {
-      const detail = restErr?.response?.data ? JSON.stringify(restErr.response.data) : (restErr?.message || String(restErr));
-      lastOpenAIError = `REST probe: ${detail}`;
-      console.error('REST fallback failed:', detail);
-      openai = null;
-      openaiTransport = 'none';
-    }
-  }
-}
+// Initialize Gemini client (Google Generative AI)
+let genAI = null;
+let lastLLMError = '';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
+const GEMINI_BASE_URL = process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com';
+const GEMINI_API_VERSION = process.env.GEMINI_API_VERSION || 'v1beta';
 
-// Models can be overridden via env vars
-const REC_MODEL = process.env.OPENAI_REC_MODEL || 'gpt-4o';
-const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || 'gpt-4o-mini';
+// Models can be overridden via env vars (Gemini)
+// Default per request: gemini-2.0-flash (stable, free-tier compatible)
+const REC_MODEL = process.env.GEMINI_REC_MODEL || process.env.OPENAI_REC_MODEL || 'gemini-2.0-flash';
+const CHAT_MODEL = process.env.GEMINI_CHAT_MODEL || process.env.OPENAI_CHAT_MODEL || 'gemini-2.0-flash';
 const DEMO_MODE = (process.env.DEMO_MODE || '').toString().toLowerCase() === 'true';
 
-// Ensure OpenAI is initialized (lazy init). Returns boolean
+// Ensure Gemini is initialized (lazy init). Returns boolean
 export const ensureOpenAIReady = async () => {
-  if (openai && openaiTransport !== 'none') return true;
-  if (!isOpenAIConfigured()) {
-    lastOpenAIError = 'API key missing or invalid';
+  if (genAI) return true;
+  if (!GEMINI_API_KEY || GEMINI_API_KEY.trim() === '') {
+    lastLLMError = 'GEMINI_API_KEY missing or invalid';
     return false;
   }
   try {
-    const sdk = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, baseURL: OPENAI_BASE_URL, organization: OPENAI_ORG || undefined });
-    await sdk.models.list();
-    openai = sdk;
-    openaiTransport = 'sdk';
+    genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     return true;
   } catch (e) {
-    lastOpenAIError = `SDK init: ${e?.message || String(e)}`;
-  }
-  try {
-    await axios.get(`${OPENAI_BASE_URL}/models`, {
-      headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        ...(OPENAI_ORG ? { 'OpenAI-Organization': OPENAI_ORG } : {})
-      },
-      proxy: false
-    });
-    openai = { _rest: true };
-    openaiTransport = 'rest';
-    return true;
-  } catch (e) {
-    lastOpenAIError = `REST probe: ${e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e))}`;
-    openai = null;
-    openaiTransport = 'none';
+    lastLLMError = e?.message || String(e);
+    genAI = null;
     return false;
   }
 };
+
+// REST helper aligned with curl example
+async function geminiGenerateTextREST(model, text, generationConfig) {
+  const url = `${GEMINI_BASE_URL}/${GEMINI_API_VERSION}/models/${model}:generateContent`;
+  const body = {
+    contents: [
+      {
+        parts: [ { text } ]
+      }
+    ],
+    ...(generationConfig ? { generationConfig } : {})
+  };
+  const res = await axios.post(url, body, {
+    headers: {
+      'Content-Type': 'application/json',
+      'X-goog-api-key': GEMINI_API_KEY
+    },
+    proxy: false
+  });
+  // Extract text safely
+  const candidates = res.data?.candidates || [];
+  const first = candidates[0];
+  const parts = first?.content?.parts || [];
+  const out = parts[0]?.text || '';
+  return out;
+}
 
 // Generate medication recommendations based on patient data
 export const generateRecommendation = async (patientId) => {
@@ -248,36 +227,8 @@ IMPORTANT:
 - Be conservative and prioritize safety
 - Confidence should reflect certainty level (0-100)`;
 
-    // Call OpenAI API
-    let responseText;
-    if (openaiTransport === 'sdk') {
-      const completion = await openai.chat.completions.create({
-        model: REC_MODEL,
-        messages: [
-          { role: 'system', content: 'You are a medical AI assistant. You provide medication recommendations based on patient data. Always prioritize patient safety and consider all medical history, allergies, and drug interactions. Output ONLY valid JSON, no additional text.' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.3,
-        max_tokens: 2000
-      });
-      responseText = completion.choices[0].message.content;
-    } else if (openaiTransport === 'rest') {
-      const completion = await axios.post(`${OPENAI_BASE_URL}/chat/completions`, {
-        model: REC_MODEL,
-        messages: [
-          { role: 'system', content: 'You are a medical AI assistant. You provide medication recommendations based on patient data. Always prioritize patient safety and consider all medical history, allergies, and drug interactions. Output ONLY valid JSON, no additional text.' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.3,
-        max_tokens: 2000
-      }, {
-        headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
-        proxy: false
-      });
-      responseText = completion.data.choices[0].message.content;
-    } else {
-      throw new Error('OpenAI not available');
-    }
+    // Call Gemini via REST (matches curl usage)
+    const responseText = await geminiGenerateTextREST(REC_MODEL, prompt, { temperature: 0.3, maxOutputTokens: 2000 });
     
     // Parse JSON response (handle markdown code blocks if present)
     let recommendationData;
@@ -329,11 +280,11 @@ IMPORTANT:
     
     // Handle specific OpenAI errors
     if (error.status === 401) {
-      throw new Error('Invalid OpenAI API key. Please check your .env configuration.');
+      throw new Error('Invalid LLM API key. Please check your .env configuration.');
     } else if (error.status === 429) {
-      throw new Error('OpenAI API rate limit exceeded. Please try again later.');
+      throw new Error('LLM API rate limit exceeded. Please try again later.');
     } else if (error.status === 500) {
-      throw new Error('OpenAI service is temporarily unavailable. Please try again later.');
+      throw new Error('LLM service is temporarily unavailable. Please try again later.');
     }
     
     throw error;
@@ -442,40 +393,22 @@ Guidelines:
       }
     ];
 
-    // Call OpenAI API
-    if (openaiTransport === 'sdk') {
-      const completion = await openai.chat.completions.create({
-        model: CHAT_MODEL,
-        messages: messages,
-        temperature: 0.7,
-        max_tokens: 500
-      });
-      return completion.choices[0].message.content;
-    }
-    if (openaiTransport === 'rest') {
-      const completion = await axios.post(`${OPENAI_BASE_URL}/chat/completions`, {
-        model: CHAT_MODEL,
-        messages: messages,
-        temperature: 0.7,
-        max_tokens: 500
-      }, {
-        headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
-        proxy: false
-      });
-      return completion.data.choices[0].message.content;
-    }
-    throw new Error('OpenAI not available');
+    // Call Gemini via REST (matches curl usage)
+    const historyText = conversationHistory.slice(-10).map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n');
+    const chatPrompt = `${systemPrompt}\n\nRecent Conversation:\n${historyText}\n\nUSER: ${userMessage}`.trim();
+    const chatOut = await geminiGenerateTextREST(CHAT_MODEL, chatPrompt, { temperature: 0.7, maxOutputTokens: 500 });
+    return chatOut;
   } catch (error) {
-    lastOpenAIError = error?.response?.data ? JSON.stringify(error.response.data) : (error?.message || String(error));
+    lastLLMError = error?.response?.data ? JSON.stringify(error.response.data) : (error?.message || String(error));
     console.error('Error generating chat response:', error);
     
     // Handle specific OpenAI errors
     if (error.status === 401) {
-      throw new Error('Invalid OpenAI API key. Please check your .env configuration.');
+      throw new Error('Invalid LLM API key. Please check your .env configuration.');
     } else if (error.status === 429) {
-      throw new Error('OpenAI API rate limit exceeded. Please try again later.');
+      throw new Error('LLM API rate limit exceeded. Please try again later.');
     } else if (error.status === 500) {
-      throw new Error('OpenAI service is temporarily unavailable. Please try again later.');
+      throw new Error('LLM service is temporarily unavailable. Please try again later.');
     }
     
     throw new Error(error.message || 'Failed to generate chatbot response');
@@ -485,52 +418,34 @@ Guidelines:
 // Public AI status helper for diagnostics
 export const getAIStatus = () => {
   return {
-    openaiConfigured: isOpenAIConfigured(),
-    openaiReady: !!openai,
+    openaiConfigured: !!GEMINI_API_KEY,
+    openaiReady: !!GEMINI_API_KEY,
     demoMode: DEMO_MODE,
     recModel: REC_MODEL,
     chatModel: CHAT_MODEL,
-    transport: openaiTransport,
-    baseURL: OPENAI_BASE_URL,
-    lastError: lastOpenAIError
+    transport: 'rest',
+    baseURL: `${GEMINI_BASE_URL}/${GEMINI_API_VERSION}`,
+    provider: 'gemini',
+    lastError: lastLLMError
   };
 };
 
 // Lightweight self-test that attempts a minimal completion
 export const testOpenAI = async () => {
   try {
-    if (!isOpenAIConfigured()) return { ok: false, reason: 'API key missing' };
-    await ensureOpenAIReady();
-    if (openaiTransport === 'sdk') {
-      const r = await openai.chat.completions.create({
-        model: CHAT_MODEL,
-        messages: [{ role: 'user', content: 'ping' }],
-        max_tokens: 5,
-        temperature: 0
-      });
-      return { ok: true, transport: 'sdk', content: r.choices[0].message.content };
-    }
-    if (openaiTransport === 'rest') {
-      const r = await axios.post(`${OPENAI_BASE_URL}/chat/completions`, {
-        model: CHAT_MODEL,
-        messages: [{ role: 'user', content: 'ping' }],
-        max_tokens: 5,
-        temperature: 0
-      }, { headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, ...(OPENAI_ORG ? { 'OpenAI-Organization': OPENAI_ORG } : {}) }, proxy: false });
-      return { ok: true, transport: 'rest', content: r.data.choices[0].message.content };
-    }
-    return { ok: false, reason: 'OpenAI not initialized' };
+    if (!GEMINI_API_KEY) return { ok: false, reason: 'GEMINI_API_KEY missing' };
+    const content = await geminiGenerateTextREST(CHAT_MODEL, 'ping', { temperature: 0, maxOutputTokens: 8 });
+    return { ok: true, transport: 'rest', content };
   } catch (e) {
     const detail = e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e));
-    lastOpenAIError = detail;
+    lastLLMError = detail;
     return { ok: false, reason: detail };
   }
 };
 
 // Reset and reinitialize OpenAI client (used by /api/chatbot/reinit)
 export const resetOpenAI = async () => {
-  openai = null;
-  openaiTransport = 'none';
-  lastOpenAIError = '';
+  genAI = null;
+  lastLLMError = '';
   return ensureOpenAIReady();
 };
