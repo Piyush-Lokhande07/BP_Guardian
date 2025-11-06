@@ -1,54 +1,81 @@
-import React from 'react'
-import { Link, NavLink } from 'react-router-dom'
+import React, { useState } from 'react'
+import { motion } from 'framer-motion'
+import { Heart, Menu, X } from 'lucide-react'
 
 export default function Navbar() {
+	const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
 	return (
-		<nav className="w-full bg-white/95 backdrop-blur border-b border-slate-200" aria-label="Main navigation">
-			<div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-				<div className="h-16 flex items-center gap-6">
-					<Link to="/" className="text-2xl font-semibold text-slate-800 tracking-tight">
-						medicus<span className="text-slate-400">.ai</span>
-					</Link>
+		<motion.nav
+			className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-100"
+			initial={{ y: -100 }}
+			animate={{ y: 0 }}
+			transition={{ duration: 0.5 }}
+		>
+			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+				<div className="flex justify-between items-center h-16">
+					{/* Logo */}
+					<motion.div className="flex items-center gap-2" whileHover={{ scale: 1.05 }}>
+						<div className="w-8 h-8 bg-linear-to-br from-blue-500 to-teal-500 rounded-lg flex items-center justify-center">
+							<Heart className="w-5 h-5 text-white" />
+						</div>
+						<span className="font-bold text-xl text-slate-900">MediBridge</span>
+					</motion.div>
 
-					<ul className="hidden md:flex items-center gap-8 text-slate-700 ml-6">
-						<li>
-							<NavLink
-								to="/"
-								className={({ isActive }) => `relative pb-2 transition-colors ${isActive ? 'text-teal-500' : 'hover:text-slate-900'}`}
+					{/* Desktop Menu */}
+					<div className="hidden md:flex items-center gap-8">
+						{["Home", "Features", "AI Insights", "For Doctors", "Contact"].map((item) => (
+							<motion.a
+								key={item}
+								href={`#${item.toLowerCase()}`}
+								className="text-slate-600 hover:text-blue-600 transition-colors text-sm font-medium"
+								whileHover={{ y: -2 }}
 							>
-								Home
-								{/** underline for active */}
-								<span className="absolute left-0 -bottom-0.5 h-0.5 w-full rounded bg-teal-400 scale-x-100" hidden={!window.location.pathname.startsWith('/')}></span>
-							</NavLink>
-						</li>
-						<li>
-							<Link className="hover:text-slate-900 flex items-center" to="/enterprise">
-								Enterprise <span className="ml-1 text-slate-400">▾</span>
-							</Link>
-						</li>
-						<li>
-							<Link className="hover:text-slate-900 flex items-center" to="/products">
-								Products <span className="ml-1 text-slate-400">▾</span>
-							</Link>
-						</li>
-						<li><Link className="hover:text-slate-900" to="/about">About</Link></li>
-						<li><Link className="hover:text-slate-900" to="/blog">Blog</Link></li>
-						<li>
-							<Link className="hover:text-slate-900 flex items-center" to="/careers">
-								Careers <span className="ml-1 text-slate-400">▾</span>
-							</Link>
-						</li>
-					</ul>
-
-					<div className="flex items-center gap-6 ml-auto">
-						<Link to="/free-trial" className="px-6 py-2 rounded-full bg-teal-400 text-white font-semibold shadow hover:bg-teal-500">
-							Free Trial
-						</Link>
-						<span className="text-slate-700">EN</span>
+								{item}
+							</motion.a>
+						))}
 					</div>
+
+					{/* Get Started Button (Desktop) */}
+					<motion.button
+						className="hidden md:flex px-6 py-2 bg-linear-to-r from-blue-500 to-teal-500 text-white rounded-full font-medium text-sm hover:shadow-lg transition-shadow"
+						whileHover={{ scale: 1.05 }}
+						whileTap={{ scale: 0.95 }}
+					>
+						Get Started
+					</motion.button>
+
+					{/* Mobile Menu Toggle */}
+					<button className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+						{mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+					</button>
 				</div>
+
+				{/* Mobile Menu */}
+				{mobileMenuOpen && (
+					<motion.div
+						className="md:hidden pb-4 border-t border-slate-100"
+						initial={{ opacity: 0, height: 0 }}
+						animate={{ opacity: 1, height: 'auto' }}
+						exit={{ opacity: 0, height: 0 }}
+					>
+						{["Home", "Features", "AI Insights", "For Doctors", "Contact"].map((item) => (
+							<a
+								key={item}
+								href={`#${item.toLowerCase()}`}
+								className="block py-2 text-slate-600 hover:text-blue-600 text-sm font-medium"
+								onClick={() => setMobileMenuOpen(false)}
+							>
+								{item}
+							</a>
+						))}
+						<button className="w-full mt-4 px-6 py-2 bg-linear-to-r from-blue-500 to-teal-500 text-white rounded-full font-medium text-sm">
+							Get Started
+						</button>
+					</motion.div>
+				)}
 			</div>
-		</nav>
+		</motion.nav>
 	)
 }
 
