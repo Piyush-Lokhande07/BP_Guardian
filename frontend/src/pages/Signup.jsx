@@ -124,7 +124,7 @@ export default function SignupPage() {
     setSendingOtp(true);
     setError('');
     try {
-  const response = await api.post('/api/auth/send-otp', { email });
+  const response = await api.post('/auth/send-otp', { email });
       if (response.data.success) {
         setOtpSent(true);
         setSuccess('OTP sent to your email! Please check your inbox.');
@@ -152,7 +152,7 @@ export default function SignupPage() {
     setSendingOtp(true);
     setError('');
     try {
-  const response = await api.post('/api/auth/verify-otp', { email, otp });
+  const response = await api.post('/auth/verify-otp', { email, otp });
       if (response.data.success) {
         setOtpVerified(true);
         setSuccess('Email verified successfully! You can now complete your registration.');
@@ -219,7 +219,7 @@ export default function SignupPage() {
       }
 
       // Call backend API
-  const response = await api.post('/api/auth/register', payload);
+  const response = await api.post('/auth/register', payload);
 
       if (response.data.success && response.data.data) {
         const { token, role, email: userEmail } = response.data.data;

@@ -25,7 +25,7 @@ export function AuthProvider({ children }) {
       if (token && !user) {
         try {
           const api = (await import('../services/api')).api
-          const response = await api.get('/api/users/me')
+          const response = await api.get('/users/me')
           if (response.data.success) {
             setUser(response.data.data)
           }

@@ -53,7 +53,7 @@ export default function PatientDashboard() {
   const fetchDoctorStatus = async () => {
     try {
       setLoadingDoctors(true)
-  const response = await api.get('/api/users/my-doctors')
+  const response = await api.get('/users/my-doctors')
       if (response.data.success) {
         setDoctorStatus({
           approved: response.data.data.approved || [],
@@ -70,7 +70,7 @@ export default function PatientDashboard() {
 
   const fetchLatestAdvice = async () => {
     try {
-  const response = await api.get('/api/recommendations?status=pending&limit=1')
+  const response = await api.get('/recommendations?status=pending&limit=1')
       if (response.data.success && response.data.data.length > 0) {
         const advice = response.data.data[0]
         // Only show advice that hasn't been sent to doctors yet
@@ -153,7 +153,7 @@ export default function PatientDashboard() {
         // Generate AI advice (but don't send to doctors yet)
         setLoading(true)
         try {
-          const adviceResponse = await api.post('/api/recommendations/generate')
+          const adviceResponse = await api.post('/recommendations/generate')
           if (adviceResponse.data.success) {
             setLatestAdvice(adviceResponse.data.data)
             setSuccess('BP reading saved and AI advice generated! You can send it to your approved doctors for review.')
