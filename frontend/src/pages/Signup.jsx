@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { User, Phone, Lock, Mail, FileText, Clipboard, Stethoscope, CheckCircle, Loader2, AlertCircle, Eye, EyeOff, ArrowLeft } from 'lucide-react';
-import { api } from '../services/api';
+import { api, API_BASE_URL } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 
@@ -47,7 +47,7 @@ export default function SignupPage() {
     try {
       setLoadingDoctors(true);
       // Use axios directly since this is public endpoint (no auth token needed)
-      const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/users/doctors`);
+  const response = await axios.get(`${API_BASE_URL}/users/doctors`);
       if (response.data.success) {
         setDoctors(response.data.data || []);
       }
@@ -266,7 +266,7 @@ export default function SignupPage() {
           <div className="inline-block p-3 bg-linear-to-br from-blue-500 to-teal-500 rounded-2xl mb-4">
             <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-transparent">M</div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">MediBridge</h1>
+          <h1 className="text-3xl font-bold text-gray-900">BP Guardian</h1>
           <p className="text-gray-600 text-sm mt-2">Blood Pressure Monitoring & Doctor Supervision</p>
         </div>
 
@@ -275,7 +275,7 @@ export default function SignupPage() {
             <ArrowLeft className="w-4 h-4 mr-2" /> Home
           </Link>
         </div>
-
+MediBridge
         <div className="bg-white rounded-2xl shadow-lg shadow-blue-100/50 border border-blue-100 overflow-hidden">
           <div className="flex border-b border-gray-200">
             {['patient', 'doctor'].map((tab) => (

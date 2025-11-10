@@ -18,7 +18,7 @@ const LandingPage = () => {
         <div className="grid md:grid-cols-2 gap-12 items-center">
           <motion.div variants={fadeInUp} initial="initial" whileInView="whileInView">
             <h1 className="text-5xl md:text-6xl font-bold text-slate-900 leading-tight mb-6">
-              Bridging AI and Doctors for{' '}
+              Bridging AI and Doctors for {' '}
               <span className="bg-linear-to-r from-blue-500 to-teal-500 bg-clip-text text-transparent">
                 Smarter Blood Pressure Care
               </span>
