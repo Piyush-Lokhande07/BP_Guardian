@@ -31,7 +31,7 @@ export default function Profile() {
   const fetchProfile = async () => {
     try {
       setLoading(true)
-      const response = await api.get('/users/me')
+  const response = await api.get('/api/users/me')
       if (response.data.success) {
         const user = response.data.data
         const formData = {
@@ -71,7 +71,7 @@ export default function Profile() {
       // Don't update email, password, or role
       const { email, ...updateData } = form
       
-      const response = await api.put('/users/me', updateData)
+  const response = await api.put('/api/users/me', updateData)
 
       if (response.data.success) {
         setOriginalForm({ ...form })

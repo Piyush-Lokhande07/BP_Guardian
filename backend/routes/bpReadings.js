@@ -3,6 +3,7 @@ import { body, validationResult } from 'express-validator';
 import { protect } from '../middleware/auth.js';
 import BPReading from '../models/BPReading.js';
 
+
 const router = express.Router();
 
 // All routes require authentication

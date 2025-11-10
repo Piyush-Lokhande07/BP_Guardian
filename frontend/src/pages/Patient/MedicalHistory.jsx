@@ -38,7 +38,7 @@ export default function MedicalHistory() {
 
   const fetchProfile = async () => {
     try {
-      const response = await api.get('/users/me')
+  const response = await api.get('/api/users/me')
       if (response.data.success) {
         const user = response.data.data
         setNotes(user.medicalHistoryText || '')
@@ -60,7 +60,7 @@ export default function MedicalHistory() {
     setSuccess('')
 
     try {
-      const response = await api.put('/users/me', {
+  const response = await api.put('/api/users/me', {
         medicalHistoryText: notes
       })
 

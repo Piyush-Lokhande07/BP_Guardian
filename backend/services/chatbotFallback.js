@@ -2,6 +2,7 @@
  * Fallback responses for chatbot when OpenAI API is not available
  * These are simple pattern-based responses for common health questions
  */
+import 'dotenv/config';
 
 const fallbackResponses = {
   'blood pressure': {

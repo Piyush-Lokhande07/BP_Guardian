@@ -28,7 +28,7 @@ export default function Chatbot() {
   const fetchHistory = async () => {
     try {
       setLoading(true)
-      const response = await api.get('/chatbot/history?limit=50')
+  const response = await api.get('/api/chatbot/history?limit=50')
       if (response.data.success) {
         const history = response.data.data || []
         // Convert to message format
@@ -78,7 +78,7 @@ export default function Chatbot() {
     try {
       setClearing(true)
       setError('')
-      const response = await api.delete('/chatbot/history')
+  const response = await api.delete('/api/chatbot/history')
       if (response.data.success) {
         setMessages([{
           from: 'ai',
@@ -121,7 +121,7 @@ export default function Chatbot() {
     setMessages(prev => [...prev, newUserMessage])
 
     try {
-      const response = await api.post('/chatbot/message', {
+  const response = await api.post('/api/chatbot/message', {
         message: userMessage
       })
 

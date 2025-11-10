@@ -6,6 +6,7 @@ import DoctorLink from '../models/DoctorLink.js';
 import OTP from '../models/OTP.js';
 import generateToken from '../utils/generateToken.js';
 import { sendOTPEmail } from '../services/emailService.js';
+import 'dotenv/config';
 
 const router = express.Router();
 

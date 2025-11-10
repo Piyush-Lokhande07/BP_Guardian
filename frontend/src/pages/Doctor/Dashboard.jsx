@@ -33,7 +33,7 @@ export default function DoctorDashboard() {
   const fetchPendingAdvice = async () => {
     try {
       setLoading(true)
-      const response = await api.get('/recommendations/pending?assignedToMe=true')
+  const response = await api.get('/api/recommendations/pending?assignedToMe=true')
       if (response.data.success) {
         setPendingAdvice(response.data.data.slice(0, 5)) // Show top 5
       }

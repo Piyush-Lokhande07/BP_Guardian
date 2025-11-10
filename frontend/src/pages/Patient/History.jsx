@@ -15,7 +15,7 @@ export default function History() {
   const fetchRecommendations = async () => {
     try {
       setLoading(true)
-      const response = await api.get('/recommendations?limit=50')
+  const response = await api.get('/api/recommendations?limit=50')
       if (response.data.success) {
         setRecommendations(response.data.data || [])
       }

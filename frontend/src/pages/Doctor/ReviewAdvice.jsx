@@ -29,7 +29,7 @@ export default function ReviewAdvice() {
   const fetchPendingRecommendations = async () => {
     try {
       setLoading(true)
-      const response = await api.get('/recommendations/pending?assignedToMe=true')
+  const response = await api.get('/api/recommendations/pending?assignedToMe=true')
       if (response.data.success) {
         setRecommendations(response.data.data || [])
       }

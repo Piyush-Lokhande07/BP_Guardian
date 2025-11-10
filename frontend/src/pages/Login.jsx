@@ -23,7 +23,7 @@ export default function LoginPage() {
 
     try {
       // Call backend API
-      const response = await api.post('/auth/login', {
+  const response = await api.post('/api/auth/login', {
         email,
         password,
       });
@@ -34,7 +34,7 @@ export default function LoginPage() {
         // Fetch full user profile to get name
         let userProfile = null;
         try {
-          const profileResponse = await api.get('/users/me');
+          const profileResponse = await api.get('/api/users/me');
           if (profileResponse.data.success) {
             userProfile = profileResponse.data.data;
           }
