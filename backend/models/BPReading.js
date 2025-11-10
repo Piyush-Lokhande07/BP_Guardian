@@ -33,6 +33,11 @@ const bpReadingSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
+  timeSlot: {
+    type: String,
+    enum: ['morning', 'late-morning', 'afternoon', 'evening', 'night'],
+    default: null
+  },
   notes: {
     type: String,
     default: ''
@@ -43,6 +48,7 @@ const bpReadingSchema = new mongoose.Schema({
 
 // Index for efficient queries
 bpReadingSchema.index({ patientId: 1, timestamp: -1 });
+bpReadingSchema.index({ patientId: 1, timestamp: 1, timeSlot: 1 });
 
 // Virtual for BP status
 bpReadingSchema.virtual('status').get(function() {

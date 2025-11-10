@@ -1,84 +1,44 @@
-import OpenAI from 'openai';
-import axios from 'axios';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import BPReading from '../models/BPReading.js';
 import MedicalRecord from '../models/MedicalRecord.js';
 import User from '../models/User.js';
-import { generateFallbackResponse, generateContextualFallbackResponse, isOpenAIConfigured } from './chatbotFallback.js';
+import { generateFallbackResponse, generateContextualFallbackResponse } from './chatbotFallback.js';
+import 'dotenv/config';
 
-// Initialize OpenAI client only if API key is provided
-let openai = null;
-let openaiTransport = 'none'; // 'sdk' | 'rest' | 'none'
-let lastOpenAIError = '';
-const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
-const OPENAI_ORG = process.env.OPENAI_ORG || '';
-if (isOpenAIConfigured()) {
+// Initialize Gemini client
+let gemini = null;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+const GEMINI_REC_MODEL = process.env.GEMINI_REC_MODEL || 'gemini-2.5-flash';
+const GEMINI_CHAT_MODEL = process.env.GEMINI_CHAT_MODEL || 'gemini-2.5-flash';
+let lastGeminiError = '';
+
+if (GEMINI_API_KEY && GEMINI_API_KEY.trim() !== '' && GEMINI_API_KEY !== 'your-gemini-api-key-here') {
   try {
-    openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-      baseURL: OPENAI_BASE_URL,
-      organization: OPENAI_ORG || undefined
-    });
-    openaiTransport = 'sdk';
+    gemini = new GoogleGenerativeAI(GEMINI_API_KEY);
   } catch (error) {
-    lastOpenAIError = `SDK init: ${error?.message || String(error)}`;
-    console.error('Error initializing OpenAI client:', error?.message || error);
-    // Fallback to REST via axios (handles Node environments without fetch)
-    try {
-      await axios.get(`${OPENAI_BASE_URL}/models`, {
-        headers: {
-          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-          ...(OPENAI_ORG ? { 'OpenAI-Organization': OPENAI_ORG } : {})
-        },
-        proxy: false
-      });
-      openai = { _rest: true };
-      openaiTransport = 'rest';
-    } catch (restErr) {
-      const detail = restErr?.response?.data ? JSON.stringify(restErr.response.data) : (restErr?.message || String(restErr));
-      lastOpenAIError = `REST probe: ${detail}`;
-      console.error('REST fallback failed:', detail);
-      openai = null;
-      openaiTransport = 'none';
-    }
+    console.error('Error initializing Gemini client:', error);
+    lastGeminiError = error.message || String(error);
   }
 }
 
-// Models can be overridden via env vars
-const REC_MODEL = process.env.OPENAI_REC_MODEL || 'gpt-4o';
-const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || 'gpt-4o-mini';
+const isGeminiConfigured = () => {
+  return GEMINI_API_KEY && GEMINI_API_KEY.trim() !== '' && GEMINI_API_KEY !== 'your-gemini-api-key-here';
+};
+
 const DEMO_MODE = (process.env.DEMO_MODE || '').toString().toLowerCase() === 'true';
 
-// Ensure OpenAI is initialized (lazy init). Returns boolean
-export const ensureOpenAIReady = async () => {
-  if (openai && openaiTransport !== 'none') return true;
-  if (!isOpenAIConfigured()) {
-    lastOpenAIError = 'API key missing or invalid';
+// Ensure Gemini is initialized
+export const ensureGeminiReady = async () => {
+  if (gemini) return true;
+  if (!isGeminiConfigured()) {
+    lastGeminiError = 'API key missing or invalid';
     return false;
   }
   try {
-    const sdk = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, baseURL: OPENAI_BASE_URL, organization: OPENAI_ORG || undefined });
-    await sdk.models.list();
-    openai = sdk;
-    openaiTransport = 'sdk';
+    gemini = new GoogleGenerativeAI(GEMINI_API_KEY);
     return true;
   } catch (e) {
-    lastOpenAIError = `SDK init: ${e?.message || String(e)}`;
-  }
-  try {
-    await axios.get(`${OPENAI_BASE_URL}/models`, {
-      headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        ...(OPENAI_ORG ? { 'OpenAI-Organization': OPENAI_ORG } : {})
-      },
-      proxy: false
-    });
-    openai = { _rest: true };
-    openaiTransport = 'rest';
-    return true;
-  } catch (e) {
-    lastOpenAIError = `REST probe: ${e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e))}`;
-    openai = null;
-    openaiTransport = 'none';
+    lastGeminiError = `Init: ${e?.message || String(e)}`;
     return false;
   }
 };
@@ -86,10 +46,12 @@ export const ensureOpenAIReady = async () => {
 // Generate medication recommendations based on patient data
 export const generateRecommendation = async (patientId) => {
   try {
-    // Ensure OpenAI ready unless demo mode
-    const ready = await ensureOpenAIReady();
-    // If no OpenAI or demo mode is enabled, return a safe heuristic recommendation
-    const useHeuristic = !ready || DEMO_MODE;
+    // Ensure Gemini is ready
+    await ensureGeminiReady();
+    
+    // Use Gemini if configured, otherwise fallback to heuristic
+    const useGemini = isGeminiConfigured() && gemini && !DEMO_MODE;
+    const useHeuristic = !useGemini;
 
     // Fetch patient data
     const patient = await User.findById(patientId);
@@ -148,7 +110,6 @@ export const generateRecommendation = async (patientId) => {
     // If heuristic path, produce a deterministic, safe recommendation
     if (useHeuristic) {
       const meds = [];
-      // Very simple rule-based suggestion for demo purposes
       if (avgSystolic >= 140 || avgDiastolic >= 90) {
         meds.push({
           name: 'Amlodipine',
@@ -170,7 +131,6 @@ export const generateRecommendation = async (patientId) => {
       }
 
       const lifestyleAdvice = [];
-      // Simple lifestyle advice based on averages
       if (avgSystolic >= 130 || avgDiastolic >= 80) {
         lifestyleAdvice.push('Reduce sodium intake to under 2,000mg/day');
         lifestyleAdvice.push('Walk briskly for 30 minutes at least 5 days/week');
@@ -184,7 +144,7 @@ export const generateRecommendation = async (patientId) => {
       const header = 'AI suggestions (not a prescription). Doctor approval required.';
       const patientMessage = [header, ...listLines].join('\n');
 
-      const recommendation = {
+      return {
         medications: meds,
         lifestyleAdvice,
         patientMessage,
@@ -203,10 +163,9 @@ export const generateRecommendation = async (patientId) => {
         aiModel: 'heuristic-demo',
         aiPrompt: 'DEMO_MODE=true (no external API used)'
       };
-      return recommendation;
     }
 
-    // Create AI prompt
+    // Create AI prompt for Gemini
     const prompt = `You are a medical AI assistant helping with blood pressure medication recommendations. 
     
 Patient Context:
@@ -246,38 +205,13 @@ IMPORTANT:
 - Consider regional drug availability and cost
 - Provide evidence-based recommendations
 - Be conservative and prioritize safety
-- Confidence should reflect certainty level (0-100)`;
+- Confidence should reflect certainty level (0-100)
+- Output ONLY valid JSON, no additional text or markdown`;
 
-    // Call OpenAI API
-    let responseText;
-    if (openaiTransport === 'sdk') {
-      const completion = await openai.chat.completions.create({
-        model: REC_MODEL,
-        messages: [
-          { role: 'system', content: 'You are a medical AI assistant. You provide medication recommendations based on patient data. Always prioritize patient safety and consider all medical history, allergies, and drug interactions. Output ONLY valid JSON, no additional text.' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.3,
-        max_tokens: 2000
-      });
-      responseText = completion.choices[0].message.content;
-    } else if (openaiTransport === 'rest') {
-      const completion = await axios.post(`${OPENAI_BASE_URL}/chat/completions`, {
-        model: REC_MODEL,
-        messages: [
-          { role: 'system', content: 'You are a medical AI assistant. You provide medication recommendations based on patient data. Always prioritize patient safety and consider all medical history, allergies, and drug interactions. Output ONLY valid JSON, no additional text.' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.3,
-        max_tokens: 2000
-      }, {
-        headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
-        proxy: false
-      });
-      responseText = completion.data.choices[0].message.content;
-    } else {
-      throw new Error('OpenAI not available');
-    }
+    // Call Gemini API
+    const model = gemini.getGenerativeModel({ model: GEMINI_REC_MODEL });
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
     
     // Parse JSON response (handle markdown code blocks if present)
     let recommendationData;
@@ -289,7 +223,7 @@ IMPORTANT:
         recommendationData = JSON.parse(responseText);
       }
     } catch (parseError) {
-      console.error('Error parsing AI response:', parseError);
+      console.error('Error parsing Gemini response:', parseError);
       throw new Error('Failed to parse AI recommendation');
     }
 
@@ -303,7 +237,7 @@ IMPORTANT:
     const header = 'AI suggestions (not a prescription). Doctor approval required.';
     const patientMessage = [header, ...listLines].join('\n');
 
-    const recommendation = {
+    return {
       medications: medsOut,
       patientMessage,
       lifestyleAdvice: recommendationData.lifestyleAdvice || [],
@@ -319,21 +253,15 @@ IMPORTANT:
         ...medications.map(m => m.title)
       ],
       allergies: allergies.map(a => a.title),
-      aiModel: 'gpt-4',
+      aiModel: GEMINI_REC_MODEL,
       aiPrompt: prompt
     };
-
-    return recommendation;
   } catch (error) {
     console.error('Error generating recommendation:', error);
     
-    // Handle specific OpenAI errors
-    if (error.status === 401) {
-      throw new Error('Invalid OpenAI API key. Please check your .env configuration.');
-    } else if (error.status === 429) {
-      throw new Error('OpenAI API rate limit exceeded. Please try again later.');
-    } else if (error.status === 500) {
-      throw new Error('OpenAI service is temporarily unavailable. Please try again later.');
+    // Handle specific Gemini errors
+    if (error.message?.includes('API key') || error.message?.includes('quota')) {
+      throw new Error('Gemini API error. Please check your API key and quota.');
     }
     
     throw error;
@@ -343,8 +271,12 @@ IMPORTANT:
 // Chatbot response generation
 export const generateChatResponse = async (patientId, userMessage, conversationHistory = []) => {
   try {
-    // Ensure OpenAI ready unless demo mode
-    const ready = await ensureOpenAIReady();
+    // Ensure Gemini is ready
+    await ensureGeminiReady();
+    
+    // Use Gemini if configured, otherwise fallback
+    const useGemini = isGeminiConfigured() && gemini && !DEMO_MODE;
+    
     // Fetch patient context
     const patient = await User.findById(patientId);
     if (!patient || patient.role !== 'patient') {
@@ -400,8 +332,8 @@ export const generateChatResponse = async (patientId, userMessage, conversationH
 
     const regionContext = `Region: ${[patient.city, patient.state, patient.country].filter(Boolean).join(', ') || 'Not specified'}`;
 
-    // If OpenAI not configured or demo mode, use contextual fallback
-    if (!ready || DEMO_MODE) {
+    // If no AI service configured or demo mode, use contextual fallback
+    if (!useGemini || DEMO_MODE) {
       return generateContextualFallbackResponse({
         latestBPText: bpContext,
         medsText: medicationsContext,
@@ -425,57 +357,36 @@ Guidelines:
 - Answer questions about medications, lifestyle, diet, and symptoms
 - Be empathetic and supportive
 - Always recommend consulting a doctor for medical advice
-- Never diagnose or prescribe medications
+- NEVER diagnose or prescribe medications
 - Keep responses concise but informative
-- If asked about specific medical conditions, provide general information only`;
+- If asked about specific medical conditions, provide general information only
+- Focus on lifestyle guidance: exercise, diet, stress management, sleep hygiene
+- Never provide specific medication dosages or prescriptions`;
 
     // Build conversation history
-    const messages = [
-      {
-        role: 'system',
-        content: systemPrompt
-      },
-      ...conversationHistory.slice(-10), // Last 10 messages for context
-      {
-        role: 'user',
-        content: userMessage
-      }
-    ];
+    const conversationText = conversationHistory.slice(-5).map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n');
+    
+    // Build prompt with context
+    const chatPrompt = `${systemPrompt}
 
-    // Call OpenAI API
-    if (openaiTransport === 'sdk') {
-      const completion = await openai.chat.completions.create({
-        model: CHAT_MODEL,
-        messages: messages,
-        temperature: 0.7,
-        max_tokens: 500
-      });
-      return completion.choices[0].message.content;
-    }
-    if (openaiTransport === 'rest') {
-      const completion = await axios.post(`${OPENAI_BASE_URL}/chat/completions`, {
-        model: CHAT_MODEL,
-        messages: messages,
-        temperature: 0.7,
-        max_tokens: 500
-      }, {
-        headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
-        proxy: false
-      });
-      return completion.data.choices[0].message.content;
-    }
-    throw new Error('OpenAI not available');
+Conversation History:
+${conversationText || 'No previous conversation'}
+
+User: ${userMessage}
+
+Assistant:`;
+
+    // Call Gemini API
+    const model = gemini.getGenerativeModel({ model: GEMINI_CHAT_MODEL });
+    const result = await model.generateContent(chatPrompt);
+    return result.response.text();
   } catch (error) {
-    lastOpenAIError = error?.response?.data ? JSON.stringify(error.response.data) : (error?.message || String(error));
+    lastGeminiError = error?.message || String(error);
     console.error('Error generating chat response:', error);
     
-    // Handle specific OpenAI errors
-    if (error.status === 401) {
-      throw new Error('Invalid OpenAI API key. Please check your .env configuration.');
-    } else if (error.status === 429) {
-      throw new Error('OpenAI API rate limit exceeded. Please try again later.');
-    } else if (error.status === 500) {
-      throw new Error('OpenAI service is temporarily unavailable. Please try again later.');
+    // Handle specific Gemini errors
+    if (error.message?.includes('API key') || error.message?.includes('quota')) {
+      throw new Error('Gemini API error. Please check your API key and quota.');
     }
     
     throw new Error(error.message || 'Failed to generate chatbot response');
@@ -485,52 +396,36 @@ Guidelines:
 // Public AI status helper for diagnostics
 export const getAIStatus = () => {
   return {
-    openaiConfigured: isOpenAIConfigured(),
-    openaiReady: !!openai,
+    geminiConfigured: isGeminiConfigured(),
+    geminiReady: !!gemini,
+    geminiRecModel: GEMINI_REC_MODEL,
+    geminiChatModel: GEMINI_CHAT_MODEL,
     demoMode: DEMO_MODE,
-    recModel: REC_MODEL,
-    chatModel: CHAT_MODEL,
-    transport: openaiTransport,
-    baseURL: OPENAI_BASE_URL,
-    lastError: lastOpenAIError
+    lastError: lastGeminiError
   };
 };
 
 // Lightweight self-test that attempts a minimal completion
 export const testOpenAI = async () => {
   try {
-    if (!isOpenAIConfigured()) return { ok: false, reason: 'API key missing' };
-    await ensureOpenAIReady();
-    if (openaiTransport === 'sdk') {
-      const r = await openai.chat.completions.create({
-        model: CHAT_MODEL,
-        messages: [{ role: 'user', content: 'ping' }],
-        max_tokens: 5,
-        temperature: 0
-      });
-      return { ok: true, transport: 'sdk', content: r.choices[0].message.content };
-    }
-    if (openaiTransport === 'rest') {
-      const r = await axios.post(`${OPENAI_BASE_URL}/chat/completions`, {
-        model: CHAT_MODEL,
-        messages: [{ role: 'user', content: 'ping' }],
-        max_tokens: 5,
-        temperature: 0
-      }, { headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, ...(OPENAI_ORG ? { 'OpenAI-Organization': OPENAI_ORG } : {}) }, proxy: false });
-      return { ok: true, transport: 'rest', content: r.data.choices[0].message.content };
-    }
-    return { ok: false, reason: 'OpenAI not initialized' };
+    if (!isGeminiConfigured()) return { ok: false, reason: 'API key missing' };
+    await ensureGeminiReady();
+    const model = gemini.getGenerativeModel({ model: GEMINI_CHAT_MODEL });
+    const result = await model.generateContent('ping');
+    return { ok: true, transport: 'gemini', content: result.response.text() };
   } catch (e) {
-    const detail = e?.response?.data ? JSON.stringify(e.response.data) : (e?.message || String(e));
-    lastOpenAIError = detail;
+    const detail = e?.message || String(e);
+    lastGeminiError = detail;
     return { ok: false, reason: detail };
   }
 };
 
-// Reset and reinitialize OpenAI client (used by /api/chatbot/reinit)
+// Reset and reinitialize Gemini client
 export const resetOpenAI = async () => {
-  openai = null;
-  openaiTransport = 'none';
-  lastOpenAIError = '';
-  return ensureOpenAIReady();
+  gemini = null;
+  lastGeminiError = '';
+  return ensureGeminiReady();
 };
+
+// For backward compatibility
+export const ensureOpenAIReady = ensureGeminiReady;

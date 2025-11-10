@@ -19,6 +19,24 @@ export function AuthProvider({ children }) {
     else localStorage.removeItem('authRole')
   }, [role])
 
+  // Fetch user profile when token is available but user is not set
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (token && !user) {
+        try {
+          const api = (await import('../services/api')).api
+          const response = await api.get('/users/me')
+          if (response.data.success) {
+            setUser(response.data.data)
+          }
+        } catch (err) {
+          console.error('Error fetching user profile:', err)
+        }
+      }
+    }
+    fetchUserProfile()
+  }, [token, user])
+
   const login = async ({ token: t, role: r, profile }) => {
     setToken(t)
     setRole(r)

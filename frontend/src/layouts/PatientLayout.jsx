@@ -1,9 +1,18 @@
 import React from 'react'
-import { Outlet, NavLink } from 'react-router-dom'
+import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
-import { HeartPulse, History, MessageSquare, User, Stethoscope } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+import { HeartPulse, History, MessageSquare, User, Stethoscope, LogOut } from 'lucide-react'
 
 export default function PatientLayout() {
+  const { logout } = useAuth()
+  const navigate = useNavigate()
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login')
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar />
@@ -26,6 +35,14 @@ export default function PatientLayout() {
               <NavLink to="/patient/profile" className={({isActive}) => `flex items-center gap-2 px-3 py-2 rounded-lg ${isActive? 'bg-blue-50 text-blue-600':'text-slate-700 hover:bg-slate-50'}`}>
                 <User className="w-4 h-4"/> Profile
               </NavLink>
+              <div className="pt-4 mt-4 border-t border-slate-200">
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  <LogOut className="w-4 h-4"/> Logout
+                </button>
+              </div>
             </nav>
           </aside>
           <main>

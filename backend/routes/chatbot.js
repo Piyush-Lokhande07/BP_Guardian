@@ -1,7 +1,7 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 import { protect } from '../middleware/auth.js';
-import { generateChatResponse, getAIStatus, testOpenAI, ensureOpenAIReady, resetOpenAI } from '../services/aiService.js';
+import { generateChatResponse, getAIStatus, testOpenAI, ensureGeminiReady, resetOpenAI } from '../services/aiService.js';
 import ChatMessage from '../models/ChatMessage.js';
 
 const router = express.Router();
@@ -125,7 +125,7 @@ router.get('/history', async (req, res) => {
 });
 
 // @route   DELETE /api/chatbot/history
-// @desc    Clear chat history
+// @desc    Clear all chat history for current patient
 // @access  Private (Patient only)
 router.delete('/history', async (req, res) => {
   try {
@@ -136,13 +136,14 @@ router.delete('/history', async (req, res) => {
       });
     }
 
-    await ChatMessage.deleteMany({
+    const result = await ChatMessage.deleteMany({
       patientId: req.user._id
     });
 
     res.json({
       success: true,
-      message: 'Chat history cleared successfully'
+      message: 'Chat history cleared successfully',
+      deletedCount: result.deletedCount
     });
   } catch (error) {
     console.error('Clear chat history error:', error);
@@ -152,6 +153,7 @@ router.delete('/history', async (req, res) => {
     });
   }
 });
+
 
 export default router;
 
@@ -168,7 +170,7 @@ router.get('/diagnostics', (req, res) => {
 // Self-test: perform a tiny live chat completion
 router.get('/self-test', async (req, res) => {
   try {
-    await ensureOpenAIReady();
+    await ensureGeminiReady();
     const result = await testOpenAI();
     res.json({ success: result.ok, data: result });
   } catch (error) {

@@ -22,8 +22,24 @@ connectDB();
 const app = express();
 
 // Middleware
+// Allow both common frontend ports for development
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'http://localhost:5173', // Vite default
+  'http://localhost:3000', // Alternative port
+  'http://localhost:5174' // Vite fallback port
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Allow all origins in development
+    }
+  },
   credentials: true
 }));
 app.use(express.json());

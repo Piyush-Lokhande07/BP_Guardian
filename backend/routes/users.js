@@ -6,7 +6,28 @@ import DoctorLink from '../models/DoctorLink.js';
 
 const router = express.Router();
 
-// All routes require authentication
+// Public route for getting doctors (for signup - no auth required)
+router.get('/doctors', async (req, res) => {
+  try {
+    const doctors = await User.find({ role: 'doctor' })
+      .select('-password')
+      .sort({ doctorName: 1 });
+
+    res.json({
+      success: true,
+      data: doctors,
+      count: doctors.length
+    });
+  } catch (error) {
+    console.error('Get doctors error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// All other routes require authentication
 router.use(protect);
 
 // @route   GET /api/users/me
@@ -127,6 +148,7 @@ router.get('/patients/:id', async (req, res) => {
     });
   }
 });
+
 
 export default router;
 

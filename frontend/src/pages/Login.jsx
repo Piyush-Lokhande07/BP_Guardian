@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../context/AuthContext';
-import { Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
+import { api } from '../services/api';
+import { Mail, Lock, Loader2, AlertCircle, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 
 export default function LoginPage() {
-  const { login } = useAuth()
+  const { login } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('patient');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -18,42 +22,47 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // Simulate API call to /api/auth/login
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          role: activeTab,
-          email,
-          password,
-        }),
+      // Call backend API
+      const response = await api.post('/auth/login', {
+        email,
+        password,
       });
 
-      if (!response.ok) {
-        throw new Error('Invalid credentials');
+      if (response.data.success && response.data.data) {
+        const { token, role } = response.data.data;
+        
+        // Fetch full user profile to get name
+        let userProfile = null;
+        try {
+          const profileResponse = await api.get('/users/me');
+          if (profileResponse.data.success) {
+            userProfile = profileResponse.data.data;
+          }
+        } catch (err) {
+          console.error('Error fetching user profile:', err);
+        }
+        
+        // Store via auth context
+        await login({ 
+          token, 
+          role, 
+          profile: userProfile
+        });
+        
+        setSuccess(true);
+
+        // Redirect based on role
+        setTimeout(() => {
+          const redirectUrl = role === 'doctor' ? '/doctor/dashboard' : '/patient/dashboard';
+          navigate(redirectUrl);
+        }, 1000);
+      } else {
+        throw new Error('Invalid response from server');
       }
-
-  const data = await response.json();
-  // Store via auth context
-  await login({ token: data.token, role: activeTab, profile: { email } })
-      setSuccess(true);
-
-      // Redirect based on role
-      setTimeout(() => {
-        const redirectUrl =
-          activeTab === 'doctor' ? '/doctor/dashboard' : '/patient/dashboard';
-        window.location.href = redirectUrl;
-      }, 1000);
     } catch (err) {
-      setError(err.message || 'Login failed. Please try again.');
-      // Fallback: simulate successful login with timeout for demo purposes
-  console.log('API call simulation - would redirect in production');
-  await login({ token: 'demo-token', role: activeTab, profile: { email } })
-      setTimeout(() => {
-        const redirectUrl =
-          activeTab === 'doctor' ? '/doctor/dashboard' : '/patient/dashboard';
-        window.location.href = redirectUrl;
-      }, 2000);
+      const errorMessage = err.response?.data?.message || err.message || 'Login failed. Please check your credentials.';
+      setError(errorMessage);
+      console.error('Login error:', err);
     } finally {
       setLoading(false);
     }
@@ -75,6 +84,13 @@ export default function LoginPage() {
           </div>
           <h1 className="text-3xl font-bold text-gray-900">BP Guardian</h1>
           <p className="text-gray-600 text-sm mt-2">Healthcare AI Platform</p>
+        </div>
+
+        {/* Home link above forms */}
+        <div className="mb-4">
+          <Link to="/" className="inline-flex items-center text-sm text-slate-600 hover:text-slate-900">
+            <ArrowLeft className="w-4 h-4 mr-2" /> Home
+          </Link>
         </div>
 
         {/* Card Container */}
@@ -151,13 +167,21 @@ export default function LoginPage() {
                 <div className="relative">
                   <Lock className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     required
-                    className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full pl-12 pr-12 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((s) => !s)}
+                    className="absolute right-3 top-3.5 text-gray-500 hover:text-gray-700"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
                 </div>
               </div>
 
@@ -187,9 +211,9 @@ export default function LoginPage() {
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
                 Don't have an account?{' '}
-                <a href="#signup" className="text-blue-600 font-semibold hover:text-blue-700">
+                <Link to="/signup" className="text-blue-600 font-semibold hover:text-blue-700">
                   Sign up
-                </a>
+                </Link>
               </p>
             </div>
           </div>
