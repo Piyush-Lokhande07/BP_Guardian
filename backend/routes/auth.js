@@ -148,7 +148,14 @@ router.post('/register', [
   body('email').isEmail().normalizeEmail(),
   body('password').isLength({ min: 6 }),
   body('role').isIn(['patient', 'doctor']),
-  body('otp').isLength({ min: 6, max: 6 })
+  body('otp').isLength({ min: 6, max: 6 }),
+  // Doctor-specific fields
+  body('doctorName').optional().isString(),
+  body('specialization').optional().isString(),
+  body('education').optional().isString(),
+  body('experienceYears').optional().isInt({ min: 0 }),
+  body('licenseNumber').optional().isString(),
+  body('registrationNumber').optional().isString(),
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -159,7 +166,9 @@ router.post('/register', [
       });
     }
 
-    const { email, password, role, doctorIds, otp, ...additionalData } = req.body;
+    const { email, password, role, doctorIds, otp,
+      doctorName, specialization, education, experienceYears, licenseNumber, registrationNumber,
+      ...additionalData } = req.body;
 
     // Verify OTP first
     const otpRecord = await OTP.findOne({ email, verified: true })
@@ -181,13 +190,23 @@ router.post('/register', [
       });
     }
 
-    // Create user
-    const user = await User.create({
+    // Build user payload
+    const userPayload = {
       email,
       password,
       role,
       ...additionalData
-    });
+    };
+    if (role === 'doctor') {
+      userPayload.doctorName = doctorName || '';
+      userPayload.specialization = specialization || '';
+      userPayload.education = education || '';
+      userPayload.experienceYears = experienceYears || 0;
+      userPayload.licenseNumber = licenseNumber || '';
+      userPayload.registrationNumber = registrationNumber || '';
+    }
+    // Create user
+    const user = await User.create(userPayload);
 
     // Delete used OTP
     await OTP.deleteOne({ _id: otpRecord._id });

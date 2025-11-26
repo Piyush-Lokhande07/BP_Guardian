@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { User, Phone, Lock, Mail, FileText, Clipboard, Stethoscope, CheckCircle, Loader2, AlertCircle, Eye, EyeOff, ArrowLeft } from 'lucide-react';
-import { api, API_BASE_URL } from '../services/api';
+import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
 
 export default function SignupPage() {
   const { login } = useAuth();
@@ -46,13 +45,13 @@ export default function SignupPage() {
   const fetchDoctors = async () => {
     try {
       setLoadingDoctors(true);
-      // Use axios directly since this is public endpoint (no auth token needed)
-  const response = await axios.get(`${API_BASE_URL}/users/doctors`);
-      if (response.data.success) {
+      // Use central api instance so baseURL, headers and interceptors are applied
+      const response = await api.get('/users/doctors');
+      if (response.data?.success) {
         setDoctors(response.data.data || []);
       }
     } catch (err) {
-      console.error('Error fetching doctors:', err);
+      console.error('[Signup] Error fetching doctors:', err)
     } finally {
       setLoadingDoctors(false);
     }
@@ -209,11 +208,12 @@ export default function SignupPage() {
           email: doctor.email,
           password: doctor.password,
           doctorName: doctor.doctorName,
-          education: doctor.education || undefined,
-          experienceYears: doctor.experience ? parseInt(doctor.experience) : undefined,
-          specialization: doctor.specialization || undefined,
-          phone: doctor.phone || undefined,
-          registrationNumber: doctor.registrationNo || undefined,
+          specialization: doctor.specialization || '',
+          education: doctor.education || '',
+          experienceYears: doctor.experience ? parseInt(doctor.experience) : 0,
+          licenseNumber: doctor.licenseNumber || '',
+          registrationNumber: doctor.registrationNo || '',
+          phone: doctor.phone || '',
           otp: otp,
         };
       }
@@ -275,7 +275,7 @@ export default function SignupPage() {
             <ArrowLeft className="w-4 h-4 mr-2" /> Home
           </Link>
         </div>
-MediBridge
+
         <div className="bg-white rounded-2xl shadow-lg shadow-blue-100/50 border border-blue-100 overflow-hidden">
           <div className="flex border-b border-gray-200">
             {['patient', 'doctor'].map((tab) => (
@@ -532,7 +532,7 @@ MediBridge
                     </p>
                   </div>
 
-                  <button type="submit" disabled={loading || success} className="w-full py-3 px-4 bg-linear-to-r from-blue-500 to-teal-500 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-teal-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2">
+                  <button type="submit" disabled={loading} className="w-full py-3 px-4 bg-linear-to-r from-blue-500 to-teal-500 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-teal-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2">
                     {loading ? 'Creating account...' : 'Create Account'}
                   </button>
                 </>
@@ -655,7 +655,7 @@ MediBridge
                     </div>
                   </div>
 
-                  <button type="submit" disabled={loading || success} className="w-full py-3 px-4 bg-linear-to-r from-blue-500 to-teal-500 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-teal-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2">
+                  <button type="submit" disabled={loading} className="w-full py-3 px-4 bg-linear-to-r from-blue-500 to-teal-500 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-teal-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2">
                     {loading ? 'Creating account...' : 'Create Account'}
                   </button>
                 </>

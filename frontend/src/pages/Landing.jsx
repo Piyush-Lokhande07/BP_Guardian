@@ -56,14 +56,14 @@ const LandingPage = () => {
             whileInView={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6 }}
           >
-            {/* Illustration intentionally left blank */}
+            
           </motion.div>
         </div>
       </div>
     </section>
   );
 
-  // Simplified footer with a single quote per request
+ 
   const Footer = () => (
     <footer className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
       <div className="max-w-3xl mx-auto text-center">
